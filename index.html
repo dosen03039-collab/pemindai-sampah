@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pemindai Sampah</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.12.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.4/dist/teachablemachine-image.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* HEADER */
+    .header {
+      width: 100%;
+      background-color: #1976D2;
+      color: white;
+      padding: 20px 0;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.16);
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .infoButton {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 26px;
+      cursor: pointer;
+    }
+
+    /* CONTAINER */
+    .container {
+      width: 90%;
+      max-width: 400px;
+      margin: 30px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* IMAGE PREVIEW */
+    #preview {
+      width: 250px;
+      height: 250px;
+      border-radius: 10px;
+      margin: 20px 0;
+      object-fit: cover;
+      display: none;
+      border: 1px solid #ccc;
+    }
+
+    /* BUTTONS */
+    .buttonRow {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      width: 100%;
+    }
+    button {
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      text-align: center;
+      width: 100%;
+    }
+    .btn-primary { background-color: #1976D2; color: white; }
+    .btn-primary:hover { background-color: #115293; }
+    .btn-analyze { background-color: #2e7d32; color: white; }
+    .btn-analyze:hover { background-color: #1b5e20; }
+
+    /* RESULT */
+    #result {
+      font-size: 20px;
+      font-weight: bold;
+      color: #1b5e20;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    /* CARDS */
+    .cardContainer {
+      width: 100%;
+      margin-top: 30px;
+    }
+    .subtitle {
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .card {
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.16);
+    }
+    .cardTitle { font-weight: bold; font-size: 18px; margin-bottom: 5px; }
+    .cardDesc { font-size: 15px; text-align: justify; }
+
+    /* MODAL */
+    .modalOverlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+    .modalBox {
+      background-color: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 85%;
+      max-width: 400px;
+    }
+    .modalTitle {
+      font-size: 20px;
+      font-weight: bold;
+      color: #1976D2;
+      margin-bottom: 10px;
+    }
+    .modalText { font-size: 16px; margin-bottom: 10px; text-align: justify; }
+    .bold { font-weight: bold; }
+
+    /* 3R Rapi */
+    .modal3r {
+      margin-bottom: 10px;
+    }
+    .modal3r-title {
+      font-weight: bold;
+      margin-bottom: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>♻️ Pemindai Sampah</h1>
+    <span class="infoButton" id="infoBtn">ℹ️</span>
+  </div>
+
+  <!-- CONTAINER -->
+  <div class="container">
+    <input type="file" id="imageInput" accept="image/*" style="display:none;" />
+
+    <div class="buttonRow">
+      <button class="btn-primary" onclick="document.getElementById('imageInput').click()">📷 Pilih Gambar</button>
+    </div>
+
+    <img id="preview" src="" alt="Preview Gambar" />
+
+    <button class="btn-analyze" id="predictBtn">🔍 Analisis</button>
+
+    <div id="result"></div>
+
+    <!-- CARD EDUKASI -->
+    <div class="cardContainer">
+      <div class="subtitle">📘 Pembelajaran: Jenis Sampah</div>
+      <div id="cards"></div>
+    </div>
+  </div>
+
+  <!-- MODAL EDUKASI -->
+  <div class="modalOverlay" id="modalOverlay">
+    <div class="modalBox">
+      <div class="modalTitle">🌍 Edukasi Pengelolaan Sampah</div>
+      <div class="modalText">
+        ♻️ Mengelola sampah dengan benar membantu menjaga bumi tetap bersih dan sehat.
+        Pisahkan sampah organik dan anorganik sejak dari rumah. Gunakan kembali barang
+        yang masih layak pakai dan kumpulkan limbah B3 di tempat khusus.
+      </div>
+      <div class="modalText">
+        🌱 Mari mulai gaya hidup ramah lingkungan dengan 3R:
+        <div class="modal3r">
+          <div class="modal3r-title">Reduce:</div>
+          Kurangi penggunaan barang sekali pakai
+        </div>
+        <div class="modal3r">
+          <div class="modal3r-title">Reuse:</div>
+          Gunakan kembali barang yang masih bisa dipakai
+        </div>
+        <div class="modal3r">
+          <div class="modal3r-title">Recycle:</div>
+          Daur ulang barang bekas menjadi hal baru
+        </div>
+      </div>
+      <button onclick="closeModal()">Tutup</button>
+    </div>
+  </div>
+
+  <script>
+    const wasteInfo = [
+      { title: "♻️ Sampah Organik", desc: "Berasal dari bahan alami yang mudah terurai seperti sisa makanan, daun, buah, dan sayuran. Dapat dijadikan kompos untuk pupuk alami.", color: "#C8E6C9" },
+      { title: "🧃 Sampah Anorganik", desc: "Bahan yang sulit terurai, seperti plastik, logam, kaca, dan kaleng. Sebaiknya dikumpulkan untuk didaur ulang atau dimanfaatkan kembali.", color: "#BBDEFB" },
+      { title: "☣️ Sampah B3", desc: "Berbahaya & beracun. Contohnya baterai, obat kadaluarsa, cat, dan limbah elektronik. Harus dibuang ke tempat khusus agar tidak mencemari lingkungan.", color: "#FFCDD2" }
+    ];
+
+    const cardsContainer = document.getElementById("cards");
+    wasteInfo.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.style.backgroundColor = item.color;
+      card.innerHTML = `<div class="cardTitle">${item.title}</div><div class="cardDesc">${item.desc}</div>`;
+      cardsContainer.appendChild(card);
+    });
+
+    // MODAL
+    const modal = document.getElementById("modalOverlay");
+    document.getElementById("infoBtn").addEventListener("click", () => modal.style.display = "flex");
+    function closeModal() { modal.style.display = "none"; }
+
+    // IMAGE UPLOAD
+    const imageInput = document.getElementById("imageInput");
+    const preview = document.getElementById("preview");
+    let selectedImage = null;
+
+    imageInput.addEventListener("change", (e) => {
+      if (e.target.files.length > 0) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          preview.src = ev.target.result;
+          preview.style.display = "block";
+          selectedImage = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // LOAD MODEL
+    const URL = "https://teachablemachine.withgoogle.com/models/B3uSOV4TR/";
+    let model, maxPredictions;
+    async function init() {
+      model = await tmImage.load(URL + "model.json", URL + "metadata.json");
+      maxPredictions = model.getTotalClasses();
+      console.log("Model loaded!");
+    }
+    init();
+
+    // PREDIKSI
+    const predictBtn = document.getElementById("predictBtn");
+    const resultDiv = document.getElementById("result");
+
+    predictBtn.addEventListener("click", async () => {
+      if (!selectedImage) { alert("Silakan pilih gambar terlebih dahulu!"); return; }
+      resultDiv.innerText = "Memproses prediksi...";
+      const img = new Image();
+      img.src = selectedImage;
+      img.width = 224;
+      img.height = 224;
+      img.onload = async () => {
+        const prediction = await model.predict(img);
+        prediction.sort((a,b)=>b.probability - a.probability);
+        resultDiv.innerText = `Tipe Sampah: ${prediction[0].className}`;
+      };
+    });
+  </script>
+
+</body>
+</html>
